@@ -1,4 +1,5 @@
-# example
+# example php
+ <br> include_once "curl.php";
  <br>$site = 'https://my_site.ru'; 
  <br>$c = curl::app($site);
  <br>$c->follow(true);
