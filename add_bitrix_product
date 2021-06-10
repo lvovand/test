@@ -1,0 +1,80 @@
+<?php
+/*
+ добавление товара и торгового предложения
+ с помощью api bitrix
+*/
+define("NO_KEEP_STATISTIC", true); //Не учитываем статистику
+define("NOT_CHECK_PERMISSIONS", true); //Не учитываем права доступа
+//подключаем битрикс
+require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_before.php");
+
+//подключаем модули для инфоблока и каталога
+$res1 = CModule::IncludeModule("iblock");
+$res2 = CModule::IncludeModule("catalog");
+
+if(!$res1 || !$res2){
+ echo "Error. Can not load iblok/catalog"; 
+ exit;
+}
+
+$IBlockOffersCatalogId = 1; // ID инфоблока предложений (торговый каталог)
+$productName = "Наименование товара";
+$offerName = "Наименование предложения"; // наименование торгового предложения
+$offerPrice = 100; // Цена 
+ 
+//получаем параметры каталога 
+$arCatalog = CCatalog::GetByID($IBlockOffersCatalogId);
+ 
+$IBlockCatalogId = $arCatalog['PRODUCT_IBLOCK_ID']; // ID инфоблока товаров
+$SKUPropertyId = $arCatalog['SKU_PROPERTY_ID']; // ID свойства в инфоблоке предложений типа "Привязка к товарам (SKU)"
+ 
+$obElement = new CIBlockElement();
+$arFields = array(
+   'NAME' => $productName,
+   'IBLOCK_ID' => $IBlockCatalogId,
+   'ACTIVE' => 'Y'
+);
+//добавляем товар и получаем его ID
+$productId = $obElement->Add($arFields);
+if(!$productId){
+ echo "Ошибка добавления товара: " . . $obElement->LAST_ERROR;
+ exit;
+}
+ 
+ // свойства торгового предложения
+ $arOfferProps = array(
+		$SKUPropertyId => $productId,
+ );
+ $arOfferFields = array(
+		'NAME' => $offerName,
+		'IBLOCK_ID' => $IBlockOffersCatalogId,
+		'ACTIVE' => 'Y',
+		'PROPERTY_VALUES' => $arOfferProps
+ );
+ 
+ //добавляем торговое предложение
+ $offerId = $obElement->Add($arOfferFields); // ID торгового предложения
+ if(!$offerId){
+  echo "Ошибка добавления торгового предложения: " . $obElement->LAST_ERROR;	
+  exit; 
+ }
+ 
+  // добавляем как товар и указываем цену
+  $catalogProductAddResult = CCatalogProduct::Add(array(
+				"ID" => $offerId,
+				"VAT_INCLUDED" => "Y", //НДС входит в стоимость
+  ));
+
+  if(!$catalogProductAddResult){
+   echo "Ошибка добавления параметров торгового предложения: " . $offerId . " в каталог товаров";	
+   exit;
+  }
+  
+  $setPrice = CPrice::SetBasePrice($offerId, $offerPrice, "RUB");
+  
+  if(!$setPrice){
+  	echo "Ошибка установки цены торгового предложения: " . $offerId;	
+   exit;
+  }
+	
+?>
